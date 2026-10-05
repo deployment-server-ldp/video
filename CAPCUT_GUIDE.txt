@@ -1,0 +1,92 @@
+CIGARETTE MAKING MACHINE REEL – CAPCUT (FREE) EDIT PACK
+=========================================================
+Size: 1080 x 1920 (9:16), 30 fps, length 30 seconds.
+Is pack mein jo bhi hai wo CapCut ke FREE version mein import ho jata hai.
+(Note: CapCut ki apni project file (.draft) bahar se nahi banai ja sakti – CapCut usay
+encrypt karta hai – is liye har layer alag file mein di hai. Neeche diye steps follow karein.)
+
+---------------------------------------------------------
+FOLDERS
+---------------------------------------------------------
+1_Video/
+  Background_VFX_NoText.mp4   -> Poori reel: explosions, shatter, transitions, color grading,
+                                 speed ramp sab hai, LEKIN koi text/HUD nahi. Isi par apna
+                                 text lagayein.  (MAIN FILE)
+  Final_Reel_Reference.mp4    -> Mukammal tayyar reel (dekhne / compare karne ke liye).
+
+2_Clips_Raw/                   -> Har section ki saaf clip (stable + color graded, bina effect).
+                                 Agar khud shuru se edit karna ho to ye use karein.
+
+3_Text_PNG/                    -> Transparent PNG titles (1080x1920). Overlay mein dalein, scale
+                                 100% rakhein – khud sahi jagah par aa jayenge.
+
+4_Overlays_PNG/
+  HUD_Frame.png               -> Corner brackets + "AUTO MODE" frame.
+  Bottom_Dark_Gradient.png    -> Neeche ka dark shade (text saaf parhne ke liye).
+
+5_Audio/
+  Full_Mix.wav                -> Music + SFX + machine sound, sab mila hua.
+  Music_Beat.wav              -> Sirf beat (120 BPM).
+  SFX_Explosions_Whoosh.wav   -> Sirf explosion/whoosh/glitch sounds (video ke sath sync).
+  Machine_Sound.wav           -> Machine ki asli awaaz (clips ke sath sync).
+
+Titles.srt                     -> Saare titles timing ke sath (editable text).
+6_Fonts/                       -> Bebas Neue + Montserrat (free fonts). PC par install kar ke
+                                 CapCut Desktop mein same font milega.
+
+---------------------------------------------------------
+TAREEQA A – ASAAN (Recommended)
+---------------------------------------------------------
+1. CapCut kholein > New Project > 1_Video/Background_VFX_NoText.mp4 import karein.
+2. Clip select > Volume 0 kar dein (is video mein awaaz nahi hai, phir bhi).
+3. Audio > Extracted / Local > 5_Audio/Full_Mix.wav add karein, 0:00 se shuru.
+4. Overlay > Add overlay > 4_Overlays_PNG/HUD_Frame.png  -> 0:03.0 se 0:25.0 tak stretch.
+5. Text PNG dalein (Overlay > Add overlay), scale 100%, neeche ki timing par:
+
+   File                                   Start   End     Animation (free)
+   00_Intro_Title.png                     0:00.4  0:03.0  In: "Zoom In" / "Fade In"
+   01_Title_PRECISION_ENGINEERING.png     0:03.5  0:05.2  In: "Slide Up"  Out: "Fade Out"
+   (0:05.7–0:07.4 "GEAR DRIVE" – Text tool se khud likhein)
+   03_Title_HIGH-SPEED_TURRET.png         0:07.8  0:09.6  In: "Slide Up"  Out: "Fade Out"
+   04_Title_AUTOMATED_PACKING.png         0:10.9  0:13.7  In: "Slide Up"  Out: "Fade Out"
+   05_Title_PERFECT_FOLDING.png           0:14.3  0:16.0  In: "Slide Up"  Out: "Fade Out"
+   06_Title_POWERFUL_DRIVE_SYSTEM.png     0:17.0  0:19.7  In: "Slide Up"  Out: "Fade Out"
+   07_Title_CONSISTENT_QUALITY.png        0:20.3  0:22.2  In: "Slide Up"  Out: "Fade Out"
+   08_Title_SMART_CONTROL.png             0:22.8  0:24.4  In: "Slide Up"  Out: "Fade Out"
+   99_Outro_Title.png                     0:25.6  0:30.0  In: "Zoom In"   Out: "Fade Out"
+
+   Title ke peeche Bottom_Dark_Gradient.png bhi same timing par laga dein (behtar look).
+6. Export: 1080p, 30 fps.
+
+Apna brand naam / phone number add karna ho: Text > Add text, font "Bebas Neue",
+color gold #FFBA30 ya white. Outro (0:25.6 ke baad) par sab se acha lagega.
+
+---------------------------------------------------------
+TAREEQA B – SHURU SE KHUD EDIT (Raw clips)
+---------------------------------------------------------
+2_Clips_Raw ki clips is tarteeb se lagayein (har clip pehle hi sahi speed par hai):
+
+   #  Clip                          Reel time       Transition (free)
+   01 Clip_01_Cam_Mechanism         0:03.0–0:05.5   (intro ke baad "Flash"/"Shake")
+   02 Clip_02_Gear_Drive            0:05.5–0:07.5   "Zoom" / "Pull in"
+   03 Clip_03_Rotary_Turret         0:07.5–0:10.0   "Glitch"
+   04 Clip_04_Pack_Forming          0:10.0–0:14.0   "Shatter"/"Break" type + flash
+   05 Clip_05_Folding_Unit          0:14.0–0:16.5   "Swipe" / "Whip"
+   06 Clip_06_Drive_System          0:16.5–0:20.0   "Slice"/"Split"
+   07 Clip_07_Output                0:20.0–0:22.5   "Glitch" + light leak
+   08 Clip_08_PLC_Control           0:22.5–0:25.0   "Zoom" / "Pull in"
+
+ - Clip_06 mein slow > fast > slow speed ramp pehle se hai. Khud karna ho to
+   Clip_06b (normal speed) lein > Speed > Curve > "Montage" ya "Hero".
+ - Beat 120 BPM hai: har cut 0.5 second ke multiple par hai, isliye Music_Beat.wav
+   ke sath cuts khud beat par aayenge.
+ - Explosion jaisa effect: Effects > "Shake", "Flash", "Shatter" type effects dhoondein.
+   Jin par "Pro" likha ho wo free mein export nahi hote – unhein skip karein.
+ - Titles.srt: Text > "Local captions" / Import captions se load karein; font aur
+   style apni marzi se badlein.
+
+---------------------------------------------------------
+COLORS / FONTS
+---------------------------------------------------------
+ Gold  : #FFBA30      White : #FFFFFF      Cyan accent: #3CDCFF
+ Titles: Bebas Neue   Small text: Montserrat (Bold / Medium)

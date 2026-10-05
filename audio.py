@@ -170,14 +170,30 @@ duck = np.ones(N)
 for T in (3.0, 10.0, 25.0):
     t = t_arr(0.8); add(duck, -0.5 * np.exp(-t * 4), T)
 
-mix = music * 0.55 * duck + sfx * 0.75 + machine * 0.22
+stems = {"music": music * 0.55 * duck, "sfx": sfx * 0.75, "machine": machine * 0.22}
+mix = sum(stems.values())
 fade = int(0.8 * SR); mix[-fade:] *= np.linspace(1, 0, fade)
 mix = np.tanh(mix * 1.1) * 0.9
 mix /= np.abs(mix).max() / 0.95
 stereo = np.stack([mix, np.roll(mix, 12) * 0.98], 1)  # tiny Haas widening
 pcm = (stereo * 32767).astype(np.int16)
 out = sys.argv[2] if len(sys.argv) > 2 else "music.wav"
-import wave
+import os, wave
+
+def write_wav(path, x):
+    st = np.stack([x, np.roll(x, 12) * 0.98], 1)
+    with wave.open(path, "wb") as w:
+        w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
+        w.writeframes((np.clip(st, -1, 1) * 32767).astype(np.int16).tobytes())
+
 with wave.open(out, "wb") as w:
     w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(pcm.tobytes())
 print("wrote", out)
+
+# separate stems for editing in other apps (STEMS_DIR=...)
+if os.environ.get("STEMS_DIR"):
+    d = os.environ["STEMS_DIR"]
+    for name, x in stems.items():
+        x = x.copy(); x[-fade:] *= np.linspace(1, 0, fade)
+        write_wav(os.path.join(d, f"{name}.wav"), x / (np.abs(x).max() + 1e-9) * 0.9)
+    print("wrote stems to", d)

@@ -13,6 +13,9 @@ SW, SH = 720, 1280
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR = os.environ.get("FONT_DIR", os.path.join(HERE, "fonts"))
 PREP = os.environ.get("PREP", "prep.mp4")
+# layer switches (used to export CapCut edit-pack layers)
+TEXT_ON = os.environ.get("TEXT", "1") == "1"
+HUD_ON = os.environ.get("HUD", "1") == "1"
 
 GOLD = (255, 186, 48)
 WHITE = (255, 255, 255)
@@ -271,6 +274,7 @@ def shadowed(base, layer, glow=None, shadow=0.75, radius=10):
     x1, y1 = min(W, bb[2] + pad), min(H, bb[3] + pad)
     reg = layer.crop((x0, y0, x1, y1))
     a = reg.getchannel("A").filter(ImageFilter.GaussianBlur(radius))
+    keep_alpha = base.mode == "RGBA"
     base = base.convert("RGBA")
     sh = Image.new("RGBA", reg.size, (0, 0, 0, 0))
     sh.putalpha(a.point(lambda v: int(v * shadow)))
@@ -280,7 +284,7 @@ def shadowed(base, layer, glow=None, shadow=0.75, radius=10):
         g.putalpha(a.point(lambda v: int(min(255, v * 0.9))))
         base.alpha_composite(g, (x0, y0))
     base.alpha_composite(layer)
-    return base.convert("RGB")
+    return base if keep_alpha else base.convert("RGB")
 
 # ---------------------------------------------------------------- particles (embers)
 _prng = np.random.default_rng(7)
@@ -417,6 +421,19 @@ class Shatter:
 def intro(t, fx=True):
     img = dark_bg(t, 26.0 + t * 0.8)
     img = draw_embers(img, t, alpha=clamp(t / 0.8))
+    if TEXT_ON:
+        img = shadowed(img, intro_layer(t), radius=14)
+    if fx:
+        k = clamp((t - 2.2) / 0.8) ** 2
+        z = 1 + 0.07 * k
+        img = img.resize((W, H), Image.BICUBIC, box=(W * (1 - 1 / z) / 2, H * (1 - 1 / z) / 2,
+                                                       W * (1 + 1 / z) / 2, H * (1 + 1 / z) / 2))
+        if k > 0.05:
+            img = Image.fromarray(glitch(np.asarray(img), 0.25 * k, int(t * FPS)))
+            img = shake_img(img, 8 * k, int(t * FPS))
+    return img
+
+def intro_layer(t):
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     f1 = fit_font(BEBAS, 250, "CIGARETTE", W - 120)
     f2 = fit_font(BEBAS, 150, "MAKING MACHINE", W - 120)
@@ -430,16 +447,7 @@ def intro(t, fx=True):
     anim_text(layer, "PRECISION  •  SPEED  •  POWER", MONT(36, "SemiBold"), W / 2, 1090, t, 1.35, WHITE,
               "center", spacing=5, stagger=0.012, mode="fade", rise=30)
     sweep(layer, t, 1.8, 0.7)
-    img = shadowed(img, layer, radius=14)
-    if fx:
-        k = clamp((t - 2.2) / 0.8) ** 2
-        z = 1 + 0.07 * k
-        img = img.resize((W, H), Image.BICUBIC, box=(W * (1 - 1 / z) / 2, H * (1 - 1 / z) / 2,
-                                                       W * (1 + 1 / z) / 2, H * (1 + 1 / z) / 2))
-        if k > 0.05:
-            img = Image.fromarray(glitch(np.asarray(img), 0.25 * k, int(t * FPS)))
-            img = shake_img(img, 8 * k, int(t * FPS))
-    return img
+    return layer
 
 def outro_layer(t):
     lt = t - 25.0
@@ -469,6 +477,10 @@ def outro_layer(t):
 
 # ---------------------------------------------------------------- HUD + titles
 def hud(img, t, seg):
+    img = img.convert("RGBA"); img.alpha_composite(hud_layer(t, seg))
+    return img.convert("RGB")
+
+def hud_layer(t, seg, dynamic=True):
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
     m, L, wd = 48, 70, 5
@@ -476,10 +488,12 @@ def hud(img, t, seg):
     for (x, y, sx, sy) in [(m, m, 1, 1), (W - m, m, -1, 1), (m, H - m - 230, 1, -1), (W - m, H - m - 230, -1, -1)]:
         d.rectangle((min(x, x + sx * L), min(y, y + sy * wd), max(x, x + sx * L), max(y, y + sy * wd)), fill=col)
         d.rectangle((min(x, x + sx * wd), min(y, y + sy * L), max(x, x + sx * wd), max(y, y + sy * L)), fill=col)
-    if int(t * 2) % 2 == 0:
+    if not dynamic or int(t * 2) % 2 == 0:
         d.ellipse((m + 22, m + 34, m + 40, m + 52), fill=(255, 50, 50, 230))
     f = MONT(26, "SemiBold")
     d.text((m + 54, m + 28), "AUTO MODE", font=f, fill=(255, 255, 255, 220))
+    if not dynamic:
+        return layer
     idx = SEGS.index(seg) + 1
     s = f"{idx:02d} / {len(SEGS):02d}"
     d.text((W - m - 22 - d.textlength(s, font=f), m + 28), s, font=f, fill=GOLD + (230,))
@@ -488,8 +502,7 @@ def hud(img, t, seg):
     d.rectangle((0, sy, W, sy + 2), fill=CYAN + (55,))
     # progress bar
     d.rectangle((0, H - 10, int(W * t / DUR), H), fill=GOLD + (255,))
-    img = img.convert("RGBA"); img.alpha_composite(layer)
-    return img.convert("RGB")
+    return layer
 
 def titles(img, t, seg):
     if not seg.l1: return img
@@ -501,6 +514,10 @@ def titles(img, t, seg):
     if k > 0:
         arr = np.asarray(img, np.float32) * (1 - BOTTOM_GRAD * k)
         img = Image.fromarray(arr.astype(np.uint8))
+    return shadowed(img, title_layer(seg, lt), radius=10)
+
+def title_layer(seg, lt):
+    t_in, t_out = seg.text_in, seg.dur - seg.text_out
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     x = 80
     anim_text(layer, seg.tag, MONT(32, "Bold"), x, 1085, lt, t_in, GOLD, spacing=4, stagger=0.012,
@@ -515,7 +532,7 @@ def titles(img, t, seg):
     anim_text(layer, seg.cap, MONT(38, "Medium"), x, 1505, lt, t_in + 0.45, (235, 235, 235), stagger=0.01,
               mode="fade", rise=20, t_out=t_out)
     sweep(layer, lt, t_in + 0.7, 0.55, 120)
-    return shadowed(img, layer, radius=10)
+    return layer
 
 def callout(img, t, t0, t1, pt, label):
     lt = t - t0
@@ -556,7 +573,7 @@ def get_shatter(name):
             _shatter[name] = Shatter(img, (W / 2, H * 0.45), 2)
         elif name == "panel":
             s = SEGS[7]; t = s.end - 1e-3
-            _shatter[name] = Shatter(hud(render_clip(s, t), t, s), (W * 0.55, H * 0.5), 3)
+            _shatter[name] = Shatter(hud(render_clip(s, t), t, s) if HUD_ON else render_clip(s, t), (W * 0.55, H * 0.5), 3)
     return _shatter[name]
 
 def outro_bg(t):
@@ -578,7 +595,8 @@ def compose(t):
             base = get_shatter("panel").render(base, lt)
             flash = 1.0 * math.exp(-lt / 0.08)
             shake = 26 * math.exp(-lt / 0.25)
-        base = shadowed(base, outro_layer(t), radius=14)
+        if TEXT_ON:
+            base = shadowed(base, outro_layer(t), radius=14)
         if t > 29.3:
             base = Image.fromarray((np.asarray(base, np.float32) * clamp((30 - t) / 0.7)).astype(np.uint8))
         return post(base, t, flash, shake, 0, glow_only=True)
@@ -658,10 +676,12 @@ def compose(t):
     # light leaks on a few downbeats
     if 16.5 <= t < 17.6:
         leak = max(leak, 0.6 * math.sin(math.pi * clamp((t - 16.5) / 1.1)))
-    img = titles(img, t, seg)
-    if SEGS[1].start + 0.2 <= t < SEGS[1].end - 0.1:
+    if TEXT_ON:
+        img = titles(img, t, seg)
+    if TEXT_ON and SEGS[1].start + 0.2 <= t < SEGS[1].end - 0.1:
         img = callout(img, t, SEGS[1].start + 0.2, SEGS[1].end - 0.1, (W * 0.5, H * 0.56), "GEAR DRIVE")
-    img = hud(img, t, seg)
+    if HUD_ON:
+        img = hud(img, t, seg)
     return post(img, t, flash, shake, leak)
 
 def slabs(t, t0):
