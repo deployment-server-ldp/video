@@ -1,4 +1,4 @@
-"""Product-flex fashion reel from 5 iPhone clips (1080x1920 @30fps, ~30.5s).
+"""Product-flex fashion reel from 5 iPhone clips (1080x1920 @30fps, ~28s).
 
 Expects SDR-converted clips p1.mp4..p5.mp4 (see README) in the working directory.
 Usage: python reel2.py out.mp4 | python reel2.py --frames 1,5,...
@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 W, H, FPS = 1080, 1920, 30
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR = os.path.join(HERE, "..", "fonts")
-CACHE = os.environ.get("CACHE", "cache")
+CACHE = os.environ.get("CACHE", "cache2")
 BEAT = 0.625  # 96 BPM
 IVORY = (250, 245, 236); GOLD = (214, 178, 108); WHITE = (255, 255, 255)
 
@@ -33,29 +33,29 @@ class Seg:
     def __init__(self, start, dur, clip, src, speed=1.0, z0=1.04, z1=1.1, pan=(0, 0)):
         self.start, self.dur, self.end = start, dur, start + dur
         self.clip, self.src, self.speed, self.z0, self.z1, self.pan = clip, src, speed, z0, z1, pan
-        self.key = f"s{start:05.2f}"
+        self.key = f"s{start:05.2f}_c{clip}_{src:.2f}_{speed:.2f}"
 
     def src_time(self, t): return self.src + (t - self.start) * self.speed
     def zoom(self, t): return self.z0 + (self.z1 - self.z0) * eio((t - self.start) / self.dur)
 
 q = BEAT
+OUTRO_T = 25.0
 SEGS = [
     Seg(0.0, 2.5, 5, 0.3, 0.7, 1.16, 1.06),            # hook: neckline close-up
-    Seg(2.5, 5.0, 2, 2.4, 0.9, 1.02, 1.10),            # hero walk-in
+    Seg(2.5, 5.0, 2, 1.8, 0.9, 1.02, 1.10),            # hero walk-in (ends before 2nd person enters at ~6.8s)
     Seg(7.5, 2.5, 4, 0.0, 2.0, 1.04, 1.12),            # hem -> neckline pan (sped up)
     Seg(10.0, 2.5, 5, 5.0, 0.8, 1.10, 1.20),           # sleeve motif
     Seg(12.5, 2.5, 3, 6.2, 0.7, 1.06, 1.00),           # dupatta flow (slow-mo)
     Seg(15.0, 2.5, 1, 8.0, 1.0, 1.08, 1.00),           # lifestyle
-    Seg(17.5, 2.5, 2, 6.3, 0.8, 1.00, 1.10),           # turn with dupatta
-    Seg(20.0, q, 5, 1.5, 1.0, 1.22, 1.16),             # flurry x4
-    Seg(20.0 + q, q, 4, 8.5, 1.0, 1.15, 1.10),
-    Seg(20.0 + 2 * q, q, 5, 9.0, 1.0, 1.15, 1.10),
-    Seg(20.0 + 3 * q, q, 3, 4.5, 1.0, 1.10, 1.04),
-    Seg(22.5, 2.5, 3, 3.0, 1.0, 1.00, 1.08),           # walk forward
-    Seg(25.0, 2.5, 2, 8.8, 0.85, 1.02, 1.10),          # mirror
-    Seg(27.5, 3.0, 5, 1.0, 0.5, 1.10, 1.18),           # outro plate
+    Seg(17.5, 2.5, 3, 8.4, 0.8, 1.00, 1.10),           # turn to camera, calligraphy wall (clip 3: no one behind)
+    Seg(20.0, q, 4, 9.5, 1.0, 1.18, 1.12),             # flurry x4: sleeve side
+    Seg(20.0 + q, q, 5, 8.5, 1.0, 1.15, 1.10),         #   hem embroidery
+    Seg(20.0 + 2 * q, q, 4, 6.8, 1.0, 1.12, 1.06),     #   upper body
+    Seg(20.0 + 3 * q, q, 1, 12.0, 1.0, 1.10, 1.04),    #   lifestyle
+    Seg(22.5, 2.5, 2, 8.8, 0.85, 1.02, 1.10),          # calligraphy hall, dupatta trailing
+    Seg(OUTRO_T, 3.0, 1, 13.0, 0.5, 1.10, 1.18),       # outro plate (blurred)
 ]
-TOTAL = 30.5
+TOTAL = OUTRO_T + 3.0
 MARGIN = 0.4
 
 def seg_at(t):
@@ -76,7 +76,7 @@ def prepare():
         meta = path + ".txt"
         if os.path.exists(meta): continue
         cmd = ["ffmpeg", "-v", "error", "-y", "-ss", f"{a:.3f}", "-t", f"{dur:.3f}", "-i", f"p{s.clip}.mp4",
-               "-vf", "eq=contrast=1.05:saturation=1.06:gamma=0.98,colorbalance=rh=0.02:bh=-0.02",
+               "-vf", "null",
                "-f", "rawvideo", "-pix_fmt", "rgb24", path]
         jobs.append((subprocess.Popen(cmd), path, meta, a))
     for p, path, meta, a in jobs:
@@ -102,7 +102,7 @@ def get_src(s, t):
     return (mm[i0] * (1 - f) + mm[i1] * f).astype(np.uint8)  # frame blend for slow-mo
 
 def beat_pulse(t):
-    if t < 2.5 or t >= 27.5: return 1.0
+    if t < 2.5 or t >= OUTRO_T: return 1.0
     ph = (t - 2.5) % (2 * BEAT)
     return 1.0 + 0.012 * math.exp(-ph * 8)
 
@@ -117,17 +117,17 @@ def clip(s, t, extra=1.0, off=(0, 0)):
 # ------------------------------------------------------------------ looks
 YY, XX = np.mgrid[0:H, 0:W].astype(np.float32)
 _r = np.sqrt(((XX - W / 2) / (W * 0.7)) ** 2 + ((YY - H / 2) / (H * 0.65)) ** 2)
-VIG = np.clip(1 - 0.35 * np.clip(_r - 0.45, 0, None) ** 1.6, 0.5, 1)[..., None].astype(np.float32)
+VIG = np.clip(1 - 0.22 * np.clip(_r - 0.45, 0, None) ** 1.6, 0.5, 1)[..., None].astype(np.float32)
 _l = np.exp(-(((XX - W * 1.0) / (W * 0.6)) ** 2 + ((YY - H * 0.2) / (H * 0.5)) ** 2))
 LEAK = np.stack([_l * 255, _l * 170, _l * 90], -1).astype(np.float32)
 BOT = (np.clip((YY - 900) / 520, 0, 1) ** 1.2 * 0.72 * (1 - np.clip((YY - 1650) / 400, 0, 1) * 0.3))[..., None].astype(np.float32)
 del _r, _l, YY, XX
 GRAIN = [np.random.default_rng(i).normal(0, 3.5, (H // 2, W // 2, 1)).astype(np.float32) for i in range(5)]
 
-def bloom(img, k=0.22):
+def bloom(img, k=0.10):
     small = img.resize((W // 4, H // 4), Image.BILINEAR)
     a = np.asarray(small, np.float32)
-    a = np.clip(a - 175, 0, None) * 2.2
+    a = np.clip(a - 200, 0, None) * 2.2
     b = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(10)).resize((W, H), Image.BILINEAR)
     return np.asarray(b, np.float32) * k
 
@@ -218,7 +218,7 @@ def titles(img, t):
     return layer, 1.0
 
 def outro(img, t):
-    lt = t - 27.5
+    lt = t - OUTRO_T
     arr = np.asarray(img.filter(ImageFilter.GaussianBlur(6 * eo(lt / 0.8))), np.float32)
     arr *= 1 - 0.55 * eo(lt / 0.8)
     img = Image.fromarray(arr.astype(np.uint8))
@@ -247,7 +247,7 @@ def base(t):
         return clip(s, t), flash, leak
     a, b = SEGS[CUTS[c] - 1], SEGS[CUTS[c]]
     kind = {2.5: "flash", 7.5: "whip", 10.0: "zoom", 12.5: "leak", 15.0: "vwhip", 17.5: "flash",
-            20.0: "punch", 22.5: "whip", 25.0: "leak", 27.5: "dissolve"}.get(round(c, 3), "cut")
+            20.0: "punch", 22.5: "whip", OUTRO_T: "dissolve"}.get(round(c, 3), "cut")
     if kind == "flash":
         img = clip(b, t, 1 + 0.25 * (1 - eo((t - c) / 0.5))) if t >= c else clip(a, t)
         flash = clamp(1 - abs(t - c) / 0.18) * 0.9
@@ -294,7 +294,7 @@ def compose(t):
     else:
         img, flash, leak = base(t)
     arr = np.asarray(img, np.float32)
-    if t >= 27.5:
+    if t >= OUTRO_T:
         img = outro(img, t); arr = np.asarray(img, np.float32)
     else:
         layer, has = titles(img, t)
