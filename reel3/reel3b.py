@@ -29,13 +29,14 @@ SHOTS = [
     (24.0, 3.0, 1, 7.0, 0.5, 1.00, 1.06, "dissolve"), # slow-mo: back view, hair & dupatta
 ]
 TOTAL = 27.0
+BLEND_SLOWMO = {0}   # opening hand movement warps under mci interpolation
 LEAKS = [s[0] for s in SHOTS if s[7] == "leak"]
 
 def ease(p): p = min(max(p, 0.0), 1.0); return p * p * (3 - 2 * p)
 
 def shot_path(cache, i):
     st, du, c, s0, sp, *_ = SHOTS[i]
-    return os.path.join(cache, f"b{i:02d}_c{c}_{s0:.2f}_{sp:.2f}.rgb")
+    return os.path.join(cache, f"b{i:02d}_c{c}_{s0:.2f}_{sp:.2f}{'_blend' if i in BLEND_SLOWMO else ''}.rgb")
 
 def load(src_dir, cache):
     os.makedirs(cache, exist_ok=True)
@@ -45,8 +46,9 @@ def load(src_dir, cache):
         if os.path.exists(p): continue
         src_len = (du + TAIL) * sp
         vf = f"scale={W}:{H}:flags=lanczos,fps={FPS}"
-        if sp < 1:   # motion-compensated slow motion
-            vf += f",setpts={1 / sp:.4f}*PTS,minterpolate=fps={FPS}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1"
+        if sp < 1:   # slow motion: motion-compensated, or frame blending where motion is too fast for it
+            mode = "blend" if i in BLEND_SLOWMO else "mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1"
+            vf += f",setpts={1 / sp:.4f}*PTS,minterpolate=fps={FPS}:mi_mode={mode}"
         vf += "," + GRADE
         procs.append(subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-ss", f"{s0:.3f}", "-t", f"{src_len:.3f}",
                                        "-i", os.path.join(src_dir, f"v{c}.mp4"), "-vf", vf,
