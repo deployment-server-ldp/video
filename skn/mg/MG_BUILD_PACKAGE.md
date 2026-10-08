@@ -65,8 +65,8 @@ The words below come from automatic speech recognition plus correction against t
 ### 4. Placeholders and how to replace them
 | ID | Time | Window | Required media | In → out |
 |---|---|---|---|---|
-| PH1 | 5.3–11.6 | Rect 580,420 → 1020,1455 (drifts up to 50 px) | **Real SKN Theory treatment footage** (application). The client's `1008.mp4` at 2:01.8 is used in the real-footage preview. | Clip-reveal up → charcoal wipe |
-| PH2 | 13.0–17.8 | Circle, centre 540,1300, r 310 | **AI 3D skin-surface animation** (1:1 render; the 3D-2 prompt in `PRODUCTION_PACKAGE.md`) | Radial reveal → circular wipe |
+| PH1 | 5.3–11.6 | Rect 580,420 → 1020,1455 (drifts up to 50 px) | **Filled in v2:** 5.3–8.8 s the product box (`2.mov` 4.4 s at 0.5× slow motion; the product name stays under the tracked blur), dissolving at 8.4–8.8 s into treatment footage (`1008.mp4` from 2:01.8). | Clip-reveal up → charcoal wipe |
+| PH2 | 13.0–17.8 | Circle, centre 540,1300, r 310 | **AI 3D skin-surface animation** from Google Flow (Veo, 9:16, 8 s, subject centred). Save it as `ph2_3d.mp4` in the footage folder; `mg.py footage … --footage DIR` places it automatically (centre crop). | Radial reveal → circular wipe |
 | PH3 | 18.0–23.6 | Rect 140,360 → 940,1360 | **Real treatment close-up or AI skin CGI** (`1008.mp4` at 3:12.5 is used in the preview) | Settles in → ivory wipe |
 | PH4 | 25.9–30.2 | Rect 560,940 → 1000,1600, slides in from x+520 | **Cinematic bridal beauty B-roll** (2:3 portrait; the AI-3 prompts) | Slide from right → charcoal mask rise |
 | LOGO | 36.5–end | Box 260,1120 → 820,1290 | **Official SKN Theory logo file** (not supplied). Opacity 0→100 and scale 96→100%, 0.9 s. Do not redraw or distort it. | Fade in → final fade |

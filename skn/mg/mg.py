@@ -144,13 +144,7 @@ def media_window(base, pid, rect=None, circle=None, t=0.0, reveal=1.0, opacity=1
     w, h = x1 - x0, y1 - y0
     content = None
     if MODE == "footage" and pid in FOOTAGE:
-        mm, st = FOOTAGE[pid]
-        fr = mm[min(max(int((t - st) * FPS), 0), len(mm) - 1)]
-        src = Image.fromarray(fr)
-        sc = max(w / src.width, h / src.height) * 1.04
-        src = src.resize((int(src.width * sc), int(src.height * sc)), Image.BICUBIC)
-        ox, oy = (src.width - w) // 2, (src.height - h) // 2
-        content = np.asarray(src.crop((ox, oy, ox + w, oy + h)), np.float32)
+        content = footage_content(pid, t, w, h)
     if content is None:
         content = ph_texture(w, h, seed).copy()
         # slow light pass so the temp plate reads as "footage area", not a flat box
@@ -449,24 +443,57 @@ def matte_frame(t):
     return np.stack([v, v, v], -1)
 
 # ------------------------------------------------------------------ footage (footage mode)
+XFADE = 0.4
+
+def footage_content(pid, t, w, h):
+    """Cover-fit the active clip(s) of a window; clips overlapping in time dissolve into each other."""
+    acc, wsum = None, 0.0
+    for c in FOOTAGE[pid]:
+        if not (c["t_in"] <= t < c["t_out"]): continue
+        a = 1.0
+        if t < c["t_in"] + XFADE and c["fade_in"]: a = eio((t - c["t_in"]) / XFADE)
+        fr = c["mm"][min(max(int((t - c["t_in"]) * FPS), 0), len(c["mm"]) - 1)]
+        src = Image.fromarray(fr)
+        sc = max(w / src.width, h / src.height) * 1.04
+        src = src.resize((int(src.width * sc), int(src.height * sc)), Image.BICUBIC)
+        ox = int(np.clip(src.width * c["cx"] - w / 2, 0, src.width - w)); oy = (src.height - h) // 2
+        img = np.asarray(src.crop((ox, oy, ox + w, oy + h)), np.float32)
+        acc = img if acc is None else acc * (1 - a) + img * a
+    return acc
+
+GRADE = ("colortemperature=temperature=5900:mix=0.5,huesaturation=saturation=-0.45:colors=c+b,"
+         "huesaturation=saturation=-0.08,curves=master='0/0.02 0.25/0.24 0.5/0.52 0.8/0.84 1/0.97'")
+
+# (window, source file, src_start, speed, timeline_in, timeline_out, crop_centre_x, stabilise, fade_in)
+CLIPS = [
+    ("PH1", "p2_masked.mp4", 4.4, 0.5, 5.3, 8.8, 0.36, False, False),   # product box, name concealed (tracked)
+    ("PH1", "1008.mp4", 121.8, 1.0, 8.4, 11.6, 0.5, True, True),        # treatment: application to forehead
+    ("PH2", "ph2_3d.mp4", 0.0, 1.0, 13.0, 17.8, 0.5, False, False),     # Google Flow 3D skin clip (when supplied)
+    ("PH3", "1008.mp4", 192.5, 1.0, 18.0, 23.6, 0.5, True, False),      # treatment close-up
+]
+
 def load_footage(src_dir):
-    """Client treatment footage for PH1 and PH3 (no packaging in these shots)."""
     cache = os.path.join(src_dir, "_mgcache"); os.makedirs(cache, exist_ok=True)
-    grade = ("colortemperature=temperature=5900:mix=0.5,huesaturation=saturation=-0.45:colors=c+b,"
-             "huesaturation=saturation=-0.08,curves=master='0/0.02 0.25/0.24 0.5/0.52 0.8/0.84 1/0.97'")
-    jobs = {"PH1": (121.8, 6.4, 5.3), "PH3": (192.5, 5.8, 18.0)}
-    for pid, (s0, dur, st) in jobs.items():
-        out = os.path.join(cache, f"{pid}.rgb")
+    for i, (pid, fname, s0, sp, t_in, t_out, cx, stab, fade_in) in enumerate(CLIPS):
+        src = os.path.join(src_dir, fname)
+        if not os.path.exists(src): continue                      # optional clip not supplied yet
+        out = os.path.join(cache, f"c{i}_{pid}_{os.path.splitext(fname)[0]}_{s0:.2f}_{sp:.2f}.rgb")
+        dur = (t_out - t_in + 0.2) * sp
         if not os.path.exists(out):
-            trf = out + ".trf"
-            src = os.path.join(src_dir, "1008.mp4")
-            subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(s0), "-t", str(dur), "-i", src, "-vf",
-                            f"vidstabdetect=shakiness=5:result={trf}", "-f", "null", "-"], check=True)
-            subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(s0), "-t", str(dur), "-i", src, "-vf",
-                            f"vidstabtransform=input={trf}:smoothing=20:zoom=3,scale=720:1280:flags=lanczos,"
-                            f"unsharp=5:5:0.5,{grade},fps={FPS}", "-an", "-f", "rawvideo", "-pix_fmt", "rgb24", out], check=True)
+            vf = ""
+            if stab:
+                trf = out + ".trf"
+                subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(s0), "-t", str(dur), "-i", src, "-vf",
+                                f"vidstabdetect=shakiness=5:result={trf}", "-f", "null", "-"], check=True)
+                vf = f"vidstabtransform=input={trf}:smoothing=20:zoom=3,"
+            vf += f"scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,unsharp=5:5:0.5,{GRADE}"
+            if sp != 1.0: vf += f",setpts={1 / sp:.4f}*PTS"
+            vf += f",fps={FPS}"
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(s0), "-t", str(dur), "-i", src, "-vf", vf,
+                            "-an", "-f", "rawvideo", "-pix_fmt", "rgb24", out], check=True)
         n = os.path.getsize(out) // (720 * 1280 * 3)
-        FOOTAGE[pid] = (np.memmap(out, np.uint8, "r", shape=(n, 1280, 720, 3)), st)
+        FOOTAGE.setdefault(pid, []).append(dict(mm=np.memmap(out, np.uint8, "r", shape=(n, 1280, 720, 3)),
+                                                t_in=t_in, t_out=t_out, cx=cx, fade_in=fade_in))
 
 def write_spec(path):
     spec = {"canvas": [W, H], "fps": FPS, "duration": TOTAL,
